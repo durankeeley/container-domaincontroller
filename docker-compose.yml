@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  dc1:
+    container_name: ${DC_NAME}
+    hostname: ${DC_NAME}
+    build: .
+    restart: unless-stopped
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ./config-dc1:/etc/samba/config
+      - ./data-dc1:/var/lib/samba
+    environment:
+      - DOMAIN_FQDN=${DOMAIN_FQDN}
+      - DNSFORWARDER=${MAIN_DNS_IP}
+      - DC_IP=${DC_IP}
+    dns_search:
+      - ${DOMAIN_FQDN}
+    dns:
+      - ${DC_IP}
+      - ${MAIN_DNS_IP}
+    extra_hosts:
+      - "${DC_NAME}.${DOMAIN_FQDN}:${DC_IP}"
+    privileged: true
+    security_opt:
+      - apparmor:unconfined
+    secrets:
+      - admin_password
+    networks:
+      sambanet:
+        ipv4_address: ${DC_IP}
+
+secrets:
+  admin_password:
+    file: ./secrets/admin_password.txt
+
+networks:
+  sambanet:
+    driver: macvlan
+    driver_opts:
+      parent: ${HOST_INTERFACE}
+    ipam:
+      config:
+        - subnet: "${SUBNET}"
+          gateway: "${GATEWAY}"
+          ip_range: "${CONTAINER_IP_RANGE}"
+#          aux_addresses:
+#            host: ${MAIN_DNS_IP}
